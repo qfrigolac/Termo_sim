@@ -1,4 +1,5 @@
 from vpython import *
+import numpy as np
 #GlowScript 3.0 VPython
 
 # Hard-sphere gas.
@@ -47,21 +48,24 @@ vert4.append([vector(d,-d,-d), vector(d,d,-d)])
 Atoms = []
 p = []
 apos = []
-pavg = sqrt(2*mass*1.5*k*T) # average kinetic energy p**2/(2mass) = (3/2)kT
-    
+
 for i in range(Natoms):
     x = L*random()-L/2
     y = L*random()-L/2
     z = L*random()-L/2
+    u1 = random()
+    u2 = random()
+    u3 = random()
+    u4 = random()
+    u5 = random()
+    u6 = random()
+    px = sqrt(mass*k*T)*sqrt(-2*log(u1))*cos(2*np.pi*u2)
+    py = sqrt(mass*k*T)*sqrt(-2*log(u3))*cos(2*np.pi*u4)
+    pz = sqrt(mass*k*T)*sqrt(-2*log(u5))*cos(2*np.pi*u6)
     if i == 0:
         Atoms.append(sphere(pos=vector(x,y,z), radius=Ratom, color=color.cyan, make_trail=True, retain=100, trail_radius=0.3*Ratom))
     else: Atoms.append(sphere(pos=vector(x,y,z), radius=Ratom, color=gray))
     apos.append(vec(x,y,z))
-    theta = pi*random()
-    phi = 2*pi*random()
-    px = pavg*sin(theta)*cos(phi)
-    py = pavg*sin(theta)*sin(phi)
-    pz = pavg*cos(theta)
     p.append(vector(px,py,pz))
 
 deltav = 100 # binning for v histogram
@@ -72,7 +76,8 @@ def barx(v):
 nhisto = int(4500/deltav)
 histo = []
 for i in range(nhisto): histo.append(0.0)
-histo[barx(pavg/mass)] = Natoms
+for i in range(Natoms): histo[barx(p[i].mag/mass)]+=1
+
 
 gg = graph( width=win, height=0.4*win, xmax=3000, align='left',
     xtitle='speed, m/s', ytitle='Number of atoms', ymax=Natoms*deltav/1000)
