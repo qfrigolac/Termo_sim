@@ -20,7 +20,8 @@ T = 300 # around room temperature
 dt = 1E-5
 
 mpress = 0
-mtemp = 0
+m_glob_press = 0
+
 
 animation = canvas( width=win, height=win, align='left')
 animation.range = L
@@ -48,6 +49,20 @@ vert1.append([vector(-d,-d,-d), vector(-d,d,-d)])
 vert2.append([vector(-d,-d,d), vector(-d,d,d)])
 vert3.append([vector(d,-d,d), vector(d,d,d)])
 vert4.append([vector(d,-d,-d), vector(d,d,-d)])
+
+wt = wtext(text='Pressió mitjana: {:1.2f}\n'.format(mpress))
+wt2 = wtext(text='Temperatura mitjana: {:1.2f}'.format(mpress))
+wt3 = wtext(text='PV: {:1.2f}'.format(mpress))
+wt4 = wtext(text='nkT: {:1.2f}'.format(mpress))
+
+def setpress(s):
+    wt.text = 'Pressió mitjana: {:e} Pa\n'.format(s)
+def settemp(s):
+    wt2.text = 'Temperatura mitjana: {:.2f} K\n'.format(s)
+def setPV(s):
+    wt3.text = 'pV= {:e}\t'.format(s)
+def setnkT(s):
+    wt4.text = 'nkT: {:e} '.format(s)
 
 Atoms = []
 p = []
@@ -85,13 +100,8 @@ for i in range(Natoms): histo[barx(p[i].mag/mass)]+=1
 
 gg = graph( width=win, height=0.4*win, xmax=3000, align='left',
     xtitle='speed, m/s', ytitle='Number of atoms', ymax=Natoms*deltav/1000)
-theory = gcurve( color=color.cyan )
-wt = wtext(text='Pressió mitjana: {:1.2f}\n'.format(mpress))
-wt2 = wtext(text='Temperatura mitjana: {:1.2f}'.format(mpress))
-def setpress(s):
-    wt.text = 'Pressió mitjana: {:e} Pa\n'.format(s)
-def settemp(s):
-    wt2.text = 'Temperatura mitjana: {:.2f} K'.format(s)
+theory = gcurve( color=color.cyan )    
+
 dv = 10
 for v in range(0,3001+dv,dv):  # theoretical prediction
     theory.plot( v, (deltav/dv)*Natoms*4*pi*((mass/(2*pi*k*T))**1.5) *exp(-0.5*mass*(v**2)/(k*T))*(v**2)*dv )
@@ -104,11 +114,14 @@ t=0
 gg2 = graph( width=win, height=0.4*win, align='left',
                 xtitle='temps (t)', ytitle='p (Pa)')
 press_graf = gcurve( color=color.cyan )
-mpress_graf = gcurve( color=color.orange )
+mpress_graf = gcurve( color=color.yellow )
+m_glob_press_graf = gcurve( color=color.orange)
+
 gg3 = graph( width=win, height=0.4*win, align='left',
                 xtitle='temps (t)', ytitle='T (K)')
 temp_graf = gcurve( color=color.cyan )
 mtemp_graf = gcurve( color=color.orange )
+tempx_graf = gcurve( color=color.yellow )
 
 def interchange(v1, v2):  # remove from v1 bar, add to v2 bar
     barx1 = barx(v1)
@@ -117,7 +130,7 @@ def interchange(v1, v2):  # remove from v1 bar, add to v2 bar
     if barx1 >= len(histo) or barx2 >= len(histo): return
     histo[barx1] -= 1
     histo[barx2] += 1
-    
+
 def checkCollisions():
     hitlist = []
     r2 = 2*Ratom
@@ -186,47 +199,52 @@ while True:
         interchange(vi.mag, p[i].mag/mass)
         interchange(vj.mag, p[j].mag/mass)
     
-    vel_tan=0
+    mom_tan=0
     for i in range(Natoms):
         loc = apos[i]
         if abs(loc.x) > L/2:
-            vel_tan+=abs(p[i].x) #Per a mesurar la pressió
+            mom_tan+=abs(p[i].x) #Per a mesurar la pressió
             if loc.x < 0: p[i].x =  abs(p[i].x)
             else: p[i].x =  -abs(p[i].x)
         
         if abs(loc.y) > L/2:
-            vel_tan+=abs(p[i].y) #Per a mesurar la pressió
+            mom_tan+=abs(p[i].y) #Per a mesurar la pressió
             if loc.y < 0: p[i].y = abs(p[i].y)
             else: p[i].y =  -abs(p[i].y)
         
         if abs(loc.z) > L/2:
-            vel_tan+=abs(p[i].z) #Per a mesurar la pressió
+            mom_tan+=abs(p[i].z) #Per a mesurar la pressió
             if loc.z < 0: p[i].z =  abs(p[i].z)
             else: p[i].z =  -abs(p[i].z)
             
             
     # Càlcul de la pressió
-    press=2/(6*L*L*dt)*vel_tan #Noteu que al treballar amb moments ens estalviem posar la massa a tot arreu :)
+    press=2/(6*L*L*dt)*mom_tan #Noteu que al treballar amb moments ens estalviem posar la massa a tot arreu :)
     
     if nhisto % 10 == 0: 
         mpress_graf.plot((t,mpress/10))
-        setpress(mpress/10)
+        setpress(m_glob_press)
+        setPV(m_glob_press)
         mpress=0
+        m_glob_press_graf.plot((t,m_glob_press))
+    
     mpress+=press
     press_graf.plot((t,press))
-
-
+    m_glob_press = (nhisto*m_glob_press+press)/(nhisto+1)
+    
     
     #Mesura de la temperatura
     suma=0
-    for i in range(Natoms): suma+=(p[i].x/mass)**2
-    Temp=mass/k*suma/Natoms
-    if nhisto % 10 == 0: 
-        mtemp_graf.plot((t,mtemp/10))
-        settemp(mtemp/10)
-        mtemp=0
-    mtemp+=Temp
+    suma2=0
+    for i in range(Natoms): 
+        suma2+=((p[i].mag)**2)/3
+        suma+=(p[i].x)**2
+    Temp=1/k*suma2/(Natoms*mass)
+    Tempx=1/k*suma/(Natoms*mass)
     temp_graf.plot((t,Temp))
+    tempx_graf.plot((t,Tempx))
+    setnkT(Natoms*k*Temp)
+    settemp(Temp)
     
     #if nhisto % 10 == 0: 
     #   print('P =',press, 'Pa T=',Temp,'K') 
