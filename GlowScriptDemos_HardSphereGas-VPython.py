@@ -1,82 +1,182 @@
 from vpython import *
 import numpy as np
+
 #GlowScript 3.0 VPython
 
 # Hard-sphere gas.
 
-# Bruce Sherwood
+# Bruce Sherwood. Modificat per Pau Sànchez i Joaquim Frigola
 
+
+###### VARIABLES GENERALS I INICIALS ######
 win = 500
 
-Natoms = 200  # change this to have more or fewer atoms
+Natoms = 400  # change this to have more or fewer atoms
 
 # Typical values
 L = 1 # container is a cube L on a side
 gray = color.gray(0.7) # color of edges of container
 mass = 4E-3/6E23 # helium mass
-Ratom = 0.03 # wildly exaggerated size of helium atom
+Ratom = 0.05 # wildly exaggerated size of helium atom
 k = 1.4E-23 # Boltzmann constant
 T = 300 # around room temperature
 dt = 1E-5
 
-animation = canvas( width=win, height=win, align='left')
+animation = canvas( width=win, height=win, align='left') #Creació del canvas
 animation.range = L
-animation.title = 'A "hard-sphere" gas'
-s = """  Theoretical and averaged speed distributions (meters/sec).
-  Initially all atoms have the same speed, but collisions
-  change the speeds of the colliding atoms. One of the atoms is
-  marked and leaves a trail so you can follow its path.
-  
+animation.title = 'Gas de "boles dures"'
+s = """  Distribució teòrica i pràctica de les velocitats (m/sec).
+  Al inici apliquem la distribució de Maxwell-Boltzmann perquè
+  les partícules es trobin en equilibri tèrmic. Així mateix, marquem
+  una d'elles en blau i deixem que deixi una traça.
+  Codi de Bruce Sherwood. Modificat per Joaquim Frigola i Pau Sànchez.
 """
 animation.caption = s
 
-d = L/2+Ratom
-r = 0.005
-boxbottom = curve(color=gray, radius=r)
-boxbottom.append([vector(-d,-d,-d), vector(-d,-d,d), vector(d,-d,d), vector(d,-d,-d), vector(-d,-d,-d)])
-boxtop = curve(color=gray, radius=r)
-boxtop.append([vector(-d,d,-d), vector(-d,d,d), vector(d,d,d), vector(d,d,-d), vector(-d,d,-d)])
-vert1 = curve(color=gray, radius=r)
-vert2 = curve(color=gray, radius=r)
-vert3 = curve(color=gray, radius=r)
-vert4 = curve(color=gray, radius=r)
-vert1.append([vector(-d,-d,-d), vector(-d,d,-d)])
-vert2.append([vector(-d,-d,d), vector(-d,d,d)])
-vert3.append([vector(d,-d,d), vector(d,d,d)])
-vert4.append([vector(d,-d,-d), vector(d,d,-d)])
+###### TEXT PER A IMPRIMIR INFORMACIÓ ######
+val=-1 #Valor per defecte fins que el text sigui actualizat per primer cop
+wt = wtext(text='Pressió mitjana: {:1.2f}\n'.format(val))
+wt2 = wtext(text='Temperatura mitjana: {:1.2f}\n'.format(val))
+wt3 = wtext(text='pV= {:1.2f}\t'.format(val))
+wt4 = wtext(text='NkT= {:1.2f}\n'.format(val))
+wt5 = wtext(text='n= {:.0f}'.format(val))
+wt6 = wtext(text='\n')
 
-Atoms = []
-p = []
-apos = []
 
-for i in range(Natoms):
-    x = L*random()-L/2
-    y = L*random()-L/2
-    z = L*random()-L/2
-    u1 = random()
-    u2 = random()
-    u3 = random()
-    u4 = random()
-    u5 = random()
-    u6 = random()
-    px = sqrt(mass*k*T)*sqrt(-2*log(u1))*cos(2*np.pi*u2)
-    py = sqrt(mass*k*T)*sqrt(-2*log(u3))*cos(2*np.pi*u4)
-    pz = sqrt(mass*k*T)*sqrt(-2*log(u5))*cos(2*np.pi*u6)
-    if i == 0:
-        Atoms.append(sphere(pos=vector(x,y,z), radius=Ratom, color=color.cyan, make_trail=True, retain=100, trail_radius=0.3*Ratom))
-    else: Atoms.append(sphere(pos=vector(x,y,z), radius=Ratom, color=gray))
-    apos.append(vec(x,y,z))
-    p.append(vector(px,py,pz))
+def setpress(s): #Funcions per a actualitzar el text
+    wt.text = 'Pressió mitjana: {:e} Pa\n'.format(s)
+def settemp(s):
+    wt2.text = 'Temperatura mitjana: {:.2f} K\n'.format(s)
+def setPV(s):
+    wt3.text = 'pV= {:e}\t'.format(s)
+def setnkT(s):
+    wt4.text = 'NkT= {:e}\n '.format(s)
+def setn(s):
+    wt5.text = 'n= {:.0f}\t'.format(s)
+def setflag(s):
+    wt6.text = 'k= {:.0f}\n'.format(s)
+
+
+
+###### VARIABLES DE FUNCIONAMENT ######
+Atoms = []  #Llista d'àtoms
+p = []  #Moment dels àtoms
+apos = []  #Posició dels àtoms
+histo = []   #Particions de l'histograma
 
 deltav = 100 # binning for v histogram
+nhisto = int(4500/deltav)
+
+t=0  #Per controlar el temps que ha passat
+n=0  #Nombre de passos (t=n*dt) que serà més útil per fer mitjanes que la var ant.
+
+m_glob_press=0 #Mitjana de la pressió des de t=0 fins a t
+mpress=0
+
+press_vol = []
+temp_vol = []
+press_temp = []
+vol_temp = []
+temp_temp = []
+
+deltaL=0.1
+flag=0
+
+###### FUNCIONS DE INICI I RESET ######
 
 def barx(v):
     return int(v/deltav) # index into bars array
 
-nhisto = int(4500/deltav)
-histo = []
-for i in range(nhisto): histo.append(0.0)
-for i in range(Natoms): histo[barx(p[i].mag/mass)]+=1
+
+def inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom):
+    d = L/2+Ratom
+    r = 0.005
+    boxbottom = curve(color=gray, radius=r)
+    boxbottom.append([vector(-d,-d,-d), vector(-d,-d,d), 
+                      vector(d,-d,d), vector(d,-d,-d), vector(-d,-d,-d)])
+    boxtop = curve(color=gray, radius=r)
+    boxtop.append([vector(-d,d,-d), vector(-d,d,d),
+                   vector(d,d,d), vector(d,d,-d), vector(-d,d,-d)])
+    vert1 = curve(color=gray, radius=r)
+    vert2 = curve(color=gray, radius=r)
+    vert3 = curve(color=gray, radius=r)
+    vert4 = curve(color=gray, radius=r)
+    vert1.append([vector(-d,-d,-d), vector(-d,d,-d)])
+    vert2.append([vector(-d,-d,d), vector(-d,d,d)])
+    vert3.append([vector(d,-d,d), vector(d,d,d)])
+    vert4.append([vector(d,-d,-d), vector(d,d,-d)])
+    for i in range(Natoms):
+        x = L*random()-L/2
+        y = L*random()-L/2
+        z = L*random()-L/2
+        u1 = random()
+        u2 = random()
+        u3 = random()
+        u4 = random()
+        u5 = random()
+        u6 = random()
+        px = sqrt(mass*k*T)*sqrt(-2*log(u1))*cos(2*np.pi*u2)
+        py = sqrt(mass*k*T)*sqrt(-2*log(u3))*cos(2*np.pi*u4)
+        pz = sqrt(mass*k*T)*sqrt(-2*log(u5))*cos(2*np.pi*u6)
+        if i == 0:
+            Atoms.append(sphere(pos=vector(x,y,z), radius=Ratom, 
+                                color=color.cyan, make_trail=True, 
+                                retain=100, trail_radius=0.3*Ratom))
+        else: Atoms.append(sphere(pos=vector(x,y,z), radius=Ratom, color=gray))
+        apos.append(vec(x,y,z))
+        p.append(vector(px,py,pz))
+    
+    for i in range(nhisto): histo.append(0.0)
+    for i in range(Natoms): histo[barx(p[i].mag/mass)]+=1
+
+def resetvars(animation,Atoms,p,apos,histo,vdist,press_graf,
+              mpress_graf,m_glob_press_graf,temp_graf,tempx_graf):
+    global n
+    global t
+    
+    Atoms.clear()
+    p.clear()
+    apos.clear()
+    
+    histo.clear()
+    vdist.delete()
+    press_graf.delete()
+    mpress_graf.delete()
+    m_glob_press_graf.delete()
+    temp_graf.delete() 
+    tempx_graf.delete()
+    for obj in animation.objects:
+        obj.visible=False
+        del obj
+    t=0
+    n=0
+
+
+###### FUNCIONS DEL BOTÓ #######
+running = False
+reset = False
+def Run(b):
+    global running
+    global reset
+    running = not running
+    if running: 
+        b.text = "Parar derivades"
+        reset = True
+    else: b.text = "Fer derivades programades"
+    
+button(text="Fer derivades programades",bind=Run)
+
+restart = False
+def Rest(b):
+    global restart
+    restart = True
+    
+button(text="Restart",bind=Rest)
+
+
+###### INICI I CREACIÓ DE GRÀFICS ######
+inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
+
 
 
 gg = graph( width=win, height=0.4*win, xmax=3000, align='left',
@@ -85,11 +185,24 @@ gg = graph( width=win, height=0.4*win, xmax=3000, align='left',
 theory = gcurve( color=color.cyan )
 dv = 10
 for v in range(0,3001+dv,dv):  # theoretical prediction
-    theory.plot( v, (deltav/dv)*Natoms*4*pi*((mass/(2*pi*k*T))**1.5) *exp(-0.5*mass*(v**2)/(k*T))*(v**2)*dv )
+    theory.plot( v, (deltav/dv)*Natoms*4*pi*((mass/(2*pi*k*T))**1.5) *
+                exp(-0.5*mass*(v**2)/(k*T))*(v**2)*dv )
 
 accum = []
 for i in range(int(3000/deltav)): accum.append([deltav*(i+.5),0])
 vdist = gvbars(color=color.red, delta=deltav )
+
+gg2 = graph( width=win, height=0.4*win, align='left',
+                xtitle='temps (s)', ytitle='p (Pa)')
+press_graf = gcurve( color=color.cyan )
+mpress_graf = gcurve( color=color.yellow )
+m_glob_press_graf = gcurve( color=color.orange)
+
+gg3 = graph( width=win, height=0.4*win, align='left',
+                xtitle='temps (s)', ytitle='T (K)')
+temp_graf = gcurve( color=color.cyan )
+tempx_graf = gcurve( color=color.yellow )
+
 
 def interchange(v1, v2):  # remove from v1 bar, add to v2 bar
     barx1 = barx(v1)
@@ -111,15 +224,17 @@ def checkCollisions():
             if mag2(dr) < r2: hitlist.append([i,j])
     return hitlist
 
-nhisto = 0 # number of histogram snapshots to average
+n = 0 # number of iterations
 
 while True:
     rate(300)
     # Accumulate and average histogram snapshots
-    for i in range(len(accum)): accum[i][1] = (nhisto*accum[i][1] + histo[i])/(nhisto+1)
-    if nhisto % 10 == 0:
+    for i in range(len(accum)): accum[i][1] = (n*accum[i][1] + histo[i])/(n+1)
+    if n % 10 == 0:
         vdist.data = accum
-    nhisto += 1
+
+    n += 1
+    t += dt
 
     # Update all positions
     for i in range(Natoms): Atoms[i].pos = apos[i] = apos[i] + (p[i]/mass)*dt
@@ -165,18 +280,130 @@ while True:
         apos[j] = posj+(p[j]/mass)*deltat
         interchange(vi.mag, p[i].mag/mass)
         interchange(vj.mag, p[j].mag/mass)
-    
+        
+    mom_tan=0
     for i in range(Natoms):
         loc = apos[i]
         if abs(loc.x) > L/2:
+            mom_tan+=abs(p[i].x) #Per a mesurar la pressió
             if loc.x < 0: p[i].x =  abs(p[i].x)
             else: p[i].x =  -abs(p[i].x)
         
         if abs(loc.y) > L/2:
+            mom_tan+=abs(p[i].y) #Per a mesurar la pressió
             if loc.y < 0: p[i].y = abs(p[i].y)
             else: p[i].y =  -abs(p[i].y)
         
         if abs(loc.z) > L/2:
+            mom_tan+=abs(p[i].z) #Per a mesurar la pressió
             if loc.z < 0: p[i].z =  abs(p[i].z)
             else: p[i].z =  -abs(p[i].z)
+            
+    # Càlcul de la pressió
+    press=2/(6*L*L*dt)*mom_tan #Noteu que al treballar amb moments ens estalviem posar la massa a tot arreu :)
+    
+    if n % 10 == 0: #Mitjana cada 10 passos 
+        mpress_graf.plot((t,mpress/10)) #Actualiztem el gràfic
+        setpress(m_glob_press) #Actualitzem el text aquí pq no canvïi tant ràpid.
+        setPV(m_glob_press)
+        mpress=0
+    
+    mpress+=press #Per fer-ne la mitjana
+    m_glob_press = (n*m_glob_press+press)/(n+1) #Computem la mitjana global
+    press_graf.plot((t,press)) #Gràfics
+    m_glob_press_graf.plot((t,m_glob_press))
+    
+    #Mesura de la temperatura
+    mtemp=0
+    mtempx=0
+    for i in range(Natoms): 
+        mtemp+=((p[i].mag)**2)/3 #Suma de moments de la mitjana de les 3 comps
+        mtempx+=(p[i].x)**2 #Suma de moments només component x
+    Temp=1/k*mtemp/(Natoms*mass)
+    Tempx=1/k*mtempx/(Natoms*mass)
+    temp_graf.plot((t,Temp))
+    tempx_graf.plot((t,Tempx))
+    setnkT(Natoms*k*Temp) #Actualitzem els textos
+    settemp(Temp)
+    setn(n)
+    
+    if reset:
+        reset = False 
+        L=1
+        T=300
+        flag=0
+        press_vol = []
+        temp_vol = []
+        press_temp = []
+        vol_temp = []
+        temp_temp = []
+        resetvars(animation,Atoms,p,apos,histo,vdist,press_graf,
+              mpress_graf,m_glob_press_graf,temp_graf,tempx_graf)
+        inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
+    if restart:
+        restart = False 
+        L=1
+        T=300
+        flag=0
+        press_vol = []
+        temp_vol = []
+        press_temp = []
+        vol_temp = []
+        temp_temp = []
+        resetvars(animation,Atoms,p,apos,histo,vdist,press_graf,
+              mpress_graf,m_glob_press_graf,temp_graf,tempx_graf)
+        inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
+    if running:
+        if n==25:
+            setflag(flag+1)
+            if flag<8:
+                press_vol.append(m_glob_press)
+                temp_vol.append(Temp)
+                resetvars(animation,Atoms,p,apos,histo,vdist,press_graf,
+                          mpress_graf,m_glob_press_graf,temp_graf,tempx_graf)
+                inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
+                flag+=1
+            elif flag < 28:
+                press_temp.append(m_glob_press)
+                temp_temp.append(Temp)
+                vol_temp.append(L**3)
+                if (flag-7)%5==0:
+                    L+=deltaL
+                resetvars(animation,Atoms,p,apos,histo,vdist,press_graf,
+                          mpress_graf,m_glob_press_graf,temp_graf,tempx_graf)
+                inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
+                flag+=1
+            else: 
+                running=False
+                div1=np.polyfit(temp_vol,press_vol,1)[0]
+                volum=[]
+                suma=0
+                for i in range(0,5): suma+=vol_temp[i]
+                volum.append(suma/5)
+                suma=0
+                for i in range(5,10): suma+=vol_temp[i]
+                volum.append(suma/5)
+                suma=0
+                for i in range(10,15): suma+=vol_temp[i]
+                volum.append(suma/5)
+                suma=0
+                for i in range(15,20): suma+=vol_temp[i]
+                volum.append(suma/5)
+                press=[]
+                suma=0
+                for i in range(0,5): suma+=press_temp[i]
+                press.append(suma/5)
+                suma=0
+                for i in range(5,10): suma+=press_temp[i]
+                press.append(suma/5)
+                suma=0
+                for i in range(10,15): suma+=press_temp[i]
+                press.append(suma/5)
+                suma=0
+                for i in range(15,20): suma+=press_temp[i]
+                press.append(suma/5)
+                press
+                div2=np.polyfit(volum,press,1)[0]
+                print('a= ',-div1/div2)
+        
     
