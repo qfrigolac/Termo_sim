@@ -354,20 +354,20 @@ while True:
               mpress_graf,m_glob_press_graf,temp_graf,tempx_graf)
         inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
     if running:
-        if n==100:
+        if n==25:
             setflag(flag+1)
-            if flag<4:
+            if flag<8:
                 press_vol.append(m_glob_press)
                 temp_vol.append(Temp)
                 resetvars(animation,Atoms,p,apos,histo,vdist,press_graf,
                           mpress_graf,m_glob_press_graf,temp_graf,tempx_graf)
                 inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
                 flag+=1
-            elif flag < 24:
+            elif flag < 28:
                 press_temp.append(m_glob_press)
                 temp_temp.append(Temp)
                 vol_temp.append(L**3)
-                if (flag-3)%5==0:
+                if (flag-7)%5==0:
                     L+=deltaL
                 resetvars(animation,Atoms,p,apos,histo,vdist,press_graf,
                           mpress_graf,m_glob_press_graf,temp_graf,tempx_graf)
@@ -375,7 +375,7 @@ while True:
                 flag+=1
             else: 
                 running=False
-                div1=np.polyfit(press_vol,temp_vol,1)[0]
+                div1=np.polyfit(temp_vol,press_vol,1)[0]
                 volum=[]
                 suma=0
                 for i in range(0,5): suma+=vol_temp[i]
@@ -403,7 +403,7 @@ while True:
                 for i in range(15,20): suma+=press_temp[i]
                 press.append(suma/5)
                 press
-                div2=np.polyfit(press,volum,1)[0]
+                div2=np.polyfit(volum,press,1)[0]
                 print('a= ',-div1/div2)
         
     
