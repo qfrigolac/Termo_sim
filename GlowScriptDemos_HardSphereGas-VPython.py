@@ -23,7 +23,7 @@ k = 1.4E-23 # Boltzmann constant
 T = 300 # around room temperature
 dt = 1E-5
 
-nderiv=2 #Iteracions que farà en cada cas (per assolir l'equilibri) al càlcul de les derivades
+nderiv=50 #Iteracions que farà en cada cas (per assolir l'equilibri) al càlcul de les derivades
 
 animation = canvas( width=win, height=win, align='left') #Creació del canvas
 animation.range = L
