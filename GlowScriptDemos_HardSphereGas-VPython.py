@@ -23,6 +23,8 @@ k = 1.4E-23 # Boltzmann constant
 T = 300 # around room temperature
 dt = 1E-5
 
+nderiv=100 #Iteracions que farà en cada cas (per assolir l'equilibri) al càlcul de les derivades
+
 animation = canvas( width=win, height=win, align='left') #Creació del canvas
 animation.range = L
 animation.title = 'Gas de "boles dures"'
@@ -56,9 +58,9 @@ def setnkT(s):
 def setn(s):
     wt5.text = ' n= {:.0f}\t'.format(s)
 def setflag(s):
-    wt6.text = ' iteració= {:.0f} de 29\n'.format(s)
+    wt6.text = ' Iteració {:.0f} de 28\n'.format(s)
 def seta(s):
-    wt7.text = ' alpha= {:.3f}\n'.format(s)
+    wt7.text = ' coef. dilatació= {:.3f}\n'.format(s)
 
 
 
@@ -130,8 +132,7 @@ def inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom):
         pz = sqrt(mass*k*T)*sqrt(-2*log(u5))*cos(2*np.pi*u6)
         if i == 0:
             Atoms.append(sphere(pos=vector(x,y,z), radius=Ratom, 
-                                color=color.cyan, make_trail=True, 
-                                retain=100, trail_radius=0.3*Ratom))
+                                color=color.cyan))
         else: Atoms.append(sphere(pos=vector(x,y,z), radius=Ratom, color=gray))
         apos.append(vec(x,y,z))
         p.append(vector(px,py,pz))
@@ -200,14 +201,14 @@ def Q4_inst(b):
     global inst
     inst = True
     
-button(text="Instantància pV",bind=Q4_inst)
+button(text="Instantània pV",bind=Q4_inst)
 
 reset_press = False
 def Res_press(b):
     global reset_press
     reset_press = True
     
-button(text="R. Pressió Mijana",bind=Res_press)
+button(text="R. Pressió Mitjana",bind=Res_press)
 
 
 ###### INICI I CREACIÓ DE GRÀFICS ######
@@ -436,7 +437,7 @@ while True:
         inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
          
     if running:
-        if n==5:
+        if n==nderiv:
             setflag(flag+1)
             if flag<8:
                 press_vol.append(m_glob_press)
@@ -485,7 +486,6 @@ while True:
                 suma=0
                 for i in range(15,20): suma+=press_temp[i]
                 press2.append(suma/5)
-                press2
                 div2=np.polyfit(volum,press2,1)[0]
                 alp=-div1/div2
                 seta(alp)
