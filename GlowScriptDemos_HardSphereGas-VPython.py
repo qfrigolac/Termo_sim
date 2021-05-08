@@ -23,7 +23,7 @@ k = 1.4E-23 # Boltzmann constant
 T = 300 # around room temperature
 dt = 1E-5
 
-nderiv=100 #Iteracions que farà en cada cas (per assolir l'equilibri) al càlcul de les derivades
+nderiv=2 #Iteracions que farà en cada cas (per assolir l'equilibri) al càlcul de les derivades
 
 animation = canvas( width=win, height=win, align='left') #Creació del canvas
 animation.range = L
@@ -60,7 +60,7 @@ def setn(s):
 def setflag(s):
     wt6.text = ' Iteració {:.0f} de 28\n'.format(s)
 def seta(s):
-    wt7.text = ' coef. dilatació= {:.3f}\n'.format(s)
+    wt7.text = ' coef. dilatació= {:.5f}\n'.format(s)
 
 
 
@@ -71,9 +71,9 @@ apos = []  #Posició dels àtoms
 histo = []   #Particions de l'histograma
 
 deltav = 100 # binning for v histogram
-deltaa = 0.005
+deltaa = 0.0005
 nhisto = int(4500/deltav)
-nhisto2 = int(4500*deltaa)
+nhisto2 = int(2*45000*deltaa)
 
 t=0  #Per controlar el temps que ha passat
 n=0  #Nombre de passos (t=n*dt) que serà més útil per fer mitjanes que la var ant.
@@ -214,8 +214,7 @@ button(text="R. Pressió Mitjana",bind=Res_press)
 ###### INICI I CREACIÓ DE GRÀFICS ######
 inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
 
-histo2=[]
-for i in range(nhisto2): histo2.append([deltaa*(i+.5),0.0])
+
 
 gg = graph( width=win, height=0.4*win, xmax=3000, align='left',
     xtitle='speed, m/s', ytitle='Number of atoms', ymax=Natoms*deltav/1000)
@@ -245,6 +244,9 @@ gg4 = graph( width=win, height=0.4*win, align='left',
                 xtitle='inst (i)', ytitle='pV (N/m)')
 pV_graf = gcurve( color=color.cyan )
 
+
+histo2=[]
+for i in range(nhisto2): histo2.append([deltaa*(i+0.5),0.0])
 gg5= graph( width=win, height=0.4*win, align='left',
                 xtitle='valor', ytitle='coef. dilatació')
 
@@ -490,7 +492,10 @@ while True:
                 alp=-div1/div2
                 seta(alp)
                 
-                histo2[bara(alp)][1]+=1
+                if alp>0 and alp < 0.02225: histo2[bara(alp)][1]+=1
+                #Pq l'if anterior? Si nderiv és massa petita llavors dona valors molt 
+                #distànts que no caben a l'histo (i si intentes plotejar-los el programa peta)
+                
                 vdist2.data = histo2
                 reset = True
         
