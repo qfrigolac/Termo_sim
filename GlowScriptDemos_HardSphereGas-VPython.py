@@ -75,7 +75,7 @@ deltaa = 0.0005
 nhisto = int(4500/deltav)
 nhisto2 = int(2*45000*deltaa)
 
-t=0  #Per controlar el temps que ha passat
+t=0  #Per controlar el temps que ha passat (gràfics)
 n=0  #Nombre de passos (t=n*dt) que serà més útil per fer mitjanes que la var ant.
 
 m_glob_press=0 #Mitjana de la pressió des de t=0 fins a t
@@ -86,6 +86,8 @@ temp_vol = []
 press_temp = []
 vol_temp = []
 temp_temp = []
+
+coef_dil=[] #Per si després volem fer estadístiques
 
 deltaL=0.1
 flag=0
@@ -252,6 +254,10 @@ gg5= graph( width=win, height=0.4*win, align='left',
 
 vdist2 = gvbars(color=color.red, delta=deltaa )
 
+
+
+###### FUNCIONS DE FUNCIONAMENT ######
+
 def interchange(v1, v2):  # remove from v1 bar, add to v2 bar
     barx1 = barx(v1)
     barx2 = barx(v2)
@@ -272,10 +278,13 @@ def checkCollisions():
             if mag2(dr) < r2: hitlist.append([i,j])
     return hitlist
 
+
+###### PROGRAMA ######
+
 n = 0 # number of iterations
 n2 = 0 # per a fer la mitjana global de la p i poder-ho resetejar
 while True:
-    rate(300)
+    #rate(300)
     
     t += dt
     
@@ -286,7 +295,8 @@ while True:
 
 
     # Update all positions
-    for i in range(Natoms): Atoms[i].pos = apos[i] = apos[i] + (p[i]/mass)*dt
+    # for i in range(Natoms): Atoms[i].pos = apos[i] = apos[i] + (p[i]/mass)*dt
+    for i in range(Natoms):  apos[i] = apos[i] + (p[i]/mass)*dt
     
     # Check for collisions
     hitlist = checkCollisions()
@@ -418,7 +428,7 @@ while True:
             pV_graf.delete()
         pV_graf.plot((q4contl,m_glob_press*L*L*2*Lx))
         inst = False
-    if reset_press: #ULL NO ESTâ bé cal canviar la N!!!!!
+    if reset_press:
         m_glob_press=press
         n2=0
         reset_press = False
@@ -491,6 +501,7 @@ while True:
                 div2=np.polyfit(volum,press2,1)[0]
                 alp=-div1/div2
                 seta(alp)
+                coef_dil.append(alp)
                 
                 if alp>0 and alp < 0.02225: histo2[bara(alp)][1]+=1
                 #Pq l'if anterior? Si nderiv és massa petita llavors dona valors molt 
