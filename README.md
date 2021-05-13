@@ -5,7 +5,7 @@
 Codi de Bruce Sherwood. Modificat per Joaquim Frigola i Pau Sànchez.
 
 ## Introducció
-En aquest codi se simula unes partícules d'un gas amb l'objectiu d'extreure'n diverses conclusions.
+En aquest codi se simula unes partícules d'un gas per tal d'extreure'n diverses conclusions.
 
 ## Variables
 Al principi del codi trobem trobem algunes variables que podem modificar per fer les diferents simulacions.
