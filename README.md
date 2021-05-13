@@ -17,7 +17,7 @@ Al principi del codi trobem trobem algunes variables que podem modificar per fer
 | Ratom    | Radi dels àtoms                                                                                                      |
 | k        | Constant de Boltzmann                                                                                                |
 | T0       | Temperatura en el qual es realitzarà la simulació                                                                    |
-| dt       | Quantitat de temps que s'abança en cada pas                                                                          |
+| dt       | Quantitat de temps que s'avança en cada pas                                                                          |
 | nderiv   | Nombre de iteracions que farà el programa abans de registrar les magnituds termodinàmiques al calcular les derivades |
 | deltaL   | Augment de la caixa en fer les derivades                                                                             |
 | dq4      | Augment de la caixa en l'expansió lliure  en l'eix x                                                                 |
