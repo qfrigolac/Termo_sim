@@ -1,3 +1,7 @@
+#Termodinàmica i Mecànica Estadística - Treball de Simulació
+#Pau Sánchez Pascual i Joaquim Frigola Casals
+
+
 from vpython import *
 import numpy as np
 
@@ -7,31 +11,36 @@ import numpy as np
 
 # Bruce Sherwood. Modificat per Pau Sànchez i Joaquim Frigola
 
-
-###### VARIABLES GENERALS I INICIALS ######
 win = 500
 
+
+###### VARIABLES GENERALS I INICIALS ######
 Natoms = 400  # change this to have more or fewer atoms
 
-# Typical values
+
 L = 1 # container is a cube L on a side
-Lx = L/2  #L'usarem per allargar la caixa més endavant
+
 gray = color.gray(0.7) # color of edges of container
 mass = 4E-3/6E23 # helium mass
 Ratom = 0.05 # wildly exaggerated size of helium atom
 k = 1.4E-23 # Boltzmann constant
-T = 300 # around room temperature
+T0 = 300 # around room temperature
 dt = 1E-5
 
-nderiv=50 #Iteracions que farà en cada cas (per assolir l'equilibri) al càlcul de les derivades
+nderiv=50 #Iter que farà en cada cas (per assolir l'eq) al càlcul de les deriv.
 
+deltaL=0.1
+dq4 = 1
+#############################################
+
+
+#Inicialitzem el canvas:
 animation = canvas( width=win, height=win, align='left') #Creació del canvas
 animation.range = L
 animation.title = 'Gas de "boles dures"'
 s = """  Distribució teòrica i pràctica de les velocitats (m/sec).
   Al inici apliquem la distribució de Maxwell-Boltzmann perquè
-  les partícules es trobin en equilibri tèrmic. Així mateix, marquem
-  una d'elles en blau i deixem que deixi una traça.
+  les partícules es trobin en equilibri tèrmic.
   Codi de Bruce Sherwood. Modificat per Joaquim Frigola i Pau Sànchez.
 """
 animation.caption = s
@@ -60,15 +69,20 @@ def setn(s):
 def setflag(s):
     wt6.text = ' Iteració {:.0f} de 28\n'.format(s)
 def seta(s):
-    wt7.text = ' coef. dilatació= {:.5f}\n'.format(s)
+    wt7.text = ' Coef. dilatació= {:.5f}\n'.format(s)
 
 
 
 ###### VARIABLES DE FUNCIONAMENT ######
+Lx = L/2  #L'usarem per allargar la caixa més endavant
+
+
 Atoms = []  #Llista d'àtoms
 p = []  #Moment dels àtoms
 apos = []  #Posició dels àtoms
 histo = []   #Particions de l'histograma
+
+T=T0
 
 deltav = 100 # binning for v histogram
 deltaa = 0.0005
@@ -76,21 +90,24 @@ nhisto = int(4500/deltav)
 nhisto2 = int(2*45000*deltaa)
 
 t=0  #Per controlar el temps que ha passat (gràfics)
-n=0  #Nombre de passos (t=n*dt) que serà més útil per fer mitjanes que la var ant.
+n=0  #Nombre de passos (t=n*dt) que serà més útil per fer mitj que la var ant.
 
 m_glob_press=0 #Mitjana de la pressió des de t=0 fins a t
 mpress=0
 
+#Derivades:
 press_vol = []
 temp_vol = []
 press_temp = []
 vol_temp = []
 temp_temp = []
 
-coef_dil=[] #Per si després volem fer estadístiques
+coef_dil=[] #Per si després volem fer estadístiques del coef de dilatació
+p_exp=[] #Per si després volem fer estadístiques de p vs 1/V
+inv_v_exp=[] #Per si després volem fer estadístiques de p vs 1/V
 
-deltaL=0.1
-flag=0
+
+flag=0 #Per comptar les derivades
 
 ###### FUNCIONS DE INICI I RESET ######
 
@@ -120,9 +137,11 @@ def inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom):
     vert3.append([vector(dx,-d,d), vector(dx,d,d)])
     vert4.append([vector(dx,-d,-d), vector(dx,d,-d)])
     for i in range(Natoms):
-        x = L*random()-Lx
+        #Posicions aleatòries
+        x = L*random()-Lx #Durant l'expansió només a un extrem de la caixa
         y = L*random()-L/2
         z = L*random()-L/2
+        #Mètode de Box-Muller per calcular el moment:
         u1 = random()
         u2 = random()
         u3 = random()
@@ -136,14 +155,14 @@ def inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom):
             Atoms.append(sphere(pos=vector(x,y,z), radius=Ratom, 
                                 color=color.cyan))
         else: Atoms.append(sphere(pos=vector(x,y,z), radius=Ratom, color=gray))
-        apos.append(vec(x,y,z))
-        p.append(vector(px,py,pz))
+        apos.append(vec(x,y,z)) #Guardem la posició
+        p.append(vector(px,py,pz)) #Guardem el moment
     
     for i in range(nhisto): histo.append(0.0)
     for i in range(Natoms): histo[barx(p[i].mag/mass)]+=1
 
 def resetvars(animation,Atoms,p,apos,histo,vdist,press_graf,
-              mpress_graf,m_glob_press_graf,temp_graf,tempx_graf):
+              mpress_graf,m_glob_press_graf,temp_graf,tempx_graf):#Netejar tot
     global n
     global t
     global n2
@@ -151,8 +170,8 @@ def resetvars(animation,Atoms,p,apos,histo,vdist,press_graf,
     Atoms.clear()
     p.clear()
     apos.clear()
-    
     histo.clear()
+    
     vdist.delete()
     press_graf.delete()
     mpress_graf.delete()
@@ -189,7 +208,7 @@ def Rest(b):
 button(text="Restart",bind=Rest)
 
 q4contl = 0
-dq4 = 1
+
 
 quest4 = False
 def Q4(b):
@@ -243,7 +262,7 @@ temp_graf = gcurve( color=color.cyan )
 tempx_graf = gcurve( color=color.yellow )
 
 gg4 = graph( width=win, height=0.4*win, align='left',
-                xtitle='inst (i)', ytitle='pV (N/m)')
+                xtitle='1/V (m^-3)', ytitle='p (Pa)')
 pV_graf = gcurve( color=color.cyan )
 
 
@@ -284,8 +303,7 @@ def checkCollisions():
 n = 0 # number of iterations
 n2 = 0 # per a fer la mitjana global de la p i poder-ho resetejar
 while True:
-    #rate(300)
-    
+    rate(300)
     t += dt
     
     # Accumulate and average histogram snapshots
@@ -295,8 +313,9 @@ while True:
 
 
     # Update all positions
-    # for i in range(Natoms): Atoms[i].pos = apos[i] = apos[i] + (p[i]/mass)*dt
-    for i in range(Natoms):  apos[i] = apos[i] + (p[i]/mass)*dt
+    for i in range(Natoms): Atoms[i].pos = apos[i] = apos[i] + (p[i]/mass)*dt
+
+
     
     # Check for collisions
     hitlist = checkCollisions()
@@ -359,11 +378,12 @@ while True:
             else: p[i].z =  -abs(p[i].z)
             
     # Càlcul de la pressió
-    press=2/(6*L*L*dt)*mom_tan #Noteu que al treballar amb moments ens estalviem posar la massa a tot arreu :)
+    press=2/(6*L*L*dt)*mom_tan 
+    #Noteu que al treballar amb moments estalviem posar la massa a tot arreu 
     
     if n % 10 == 0: #Mitjana cada 10 passos 
         mpress_graf.plot((t,mpress/10)) #Actualiztem el gràfic
-        setpress(m_glob_press) #Actualitzem el text aquí pq no canvïi tant ràpid.
+        setpress(m_glob_press) #Actualitz el text aquí pq no canvïi tant ràpid
         setPV(m_glob_press*L*L*Lx*2)
         mpress=0
     
@@ -390,12 +410,12 @@ while True:
     n += 1
     n2 += 1
     
-    
-    if reset:
+    #Activacions amb el botó
+    if reset: #Netejar i deixar-ho com al principi (durant les derivades):
         reset = False 
         L=1
         Lx = L/2
-        T=300
+        T=T0
         flag=0
         q4contl = 0
         press_vol = []
@@ -406,13 +426,13 @@ while True:
         resetvars(animation,Atoms,p,apos,histo,vdist,press_graf,
               mpress_graf,m_glob_press_graf,temp_graf,tempx_graf)
         inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
-    if quest4:
+    if quest4: #Fer l'expansió:
         running = False 
         L=1
         q4contl += 1
         Lx = (L+q4contl*dq4)/2
         
-        T=300
+        T=T0
         flag=0
         press_vol = []
         temp_vol = []
@@ -423,20 +443,23 @@ while True:
               mpress_graf,m_glob_press_graf,temp_graf,tempx_graf)
         inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
         quest4 = False
-    if inst:
+    if inst: #Capturar les dades de p vs 1/V
         if q4contl==0:
             pV_graf.delete()
-        pV_graf.plot((q4contl,m_glob_press*L*L*2*Lx))
+        pV_graf.plot((1/(L*L*2*Lx),m_glob_press))
+        inv_v_exp.append(1/(L*L*2*Lx))
+        p_exp.append(m_glob_press)
         inst = False
-    if reset_press:
+    if reset_press: #Reset
         m_glob_press=press
         n2=0
         reset_press = False
-    if restart:
+    if restart:  #Parar-ho tot i recomençar de nou (botó restart):
+        running = False 
         restart = False 
         L=1
         Lx = L/2
-        T=300
+        T=T0
         flag=0
         q4contl = 0
         press_vol = []
@@ -447,18 +470,19 @@ while True:
         resetvars(animation,Atoms,p,apos,histo,vdist,press_graf,
               mpress_graf,m_glob_press_graf,temp_graf,tempx_graf)
         inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
-         
+    
+    #Càlcul de les derivades i el coeficient de dilatació
     if running:
         if n==nderiv:
             setflag(flag+1)
-            if flag<8:
+            if flag<8: #Dp/DT a V ctant
                 press_vol.append(m_glob_press)
                 temp_vol.append(Temp)
                 resetvars(animation,Atoms,p,apos,histo,vdist,press_graf,
                           mpress_graf,m_glob_press_graf,temp_graf,tempx_graf)
                 inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
                 flag+=1
-            elif flag < 28:
+            elif flag < 28: #Dp/DV a T ctant
                 press_temp.append(m_glob_press)
                 temp_temp.append(Temp)
                 vol_temp.append(L**3)
@@ -470,8 +494,8 @@ while True:
                 inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
                 flag+=1
             else: 
-                #running=False
-                div1=np.polyfit(temp_vol,press_vol,1)[0]
+                #Fem les regressions i mitjanes
+                div1=np.polyfit(temp_vol,press_vol,1)[0] #Numerador del coef,
                 volum=[]
                 suma=0
                 for i in range(0,5): suma+=vol_temp[i]
@@ -498,14 +522,16 @@ while True:
                 suma=0
                 for i in range(15,20): suma+=press_temp[i]
                 press2.append(suma/5)
-                div2=np.polyfit(volum,press2,1)[0]
-                alp=-div1/div2
-                seta(alp)
+                div2=np.polyfit(volum,press2,1)[0] #Denominador del coef
+                alp=-div1/div2 #Calculem el coeficient de dilatació
+                seta(alp) #Imprimeix el coeficient a la pantalla
                 coef_dil.append(alp)
                 
                 if alp>0 and alp < 0.02225: histo2[bara(alp)][1]+=1
-                #Pq l'if anterior? Si nderiv és massa petita llavors dona valors molt 
-                #distànts que no caben a l'histo (i si intentes plotejar-los el programa peta)
+                #Pq l'if anterior? Si nderiv és massa petita llavors dona
+                #valors molt distànts que no caben a l'histo (i si intentes 
+                #plotejar-los el programa peta). Per T altes cal fer el mateix
+                #amb l'histograma de velocitats (o desactivar-lo)
                 
                 vdist2.data = histo2
                 reset = True
