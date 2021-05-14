@@ -28,7 +28,7 @@ Al prémer "Expansió lliure (pas)" es reinicialitzarà la simulació amb la cai
 
 Finalment, "R. Pressió Mitjana" esborra la mitjana global de la pressió (línia carbassa) i la torna a començar des de zero.
 
-##Informació disponible
+## Informació disponible
 Quan fem la simulació a la pantalla se'ns mostra informació diversa:
 
 | Informació          | Significat                                                                                                                                                                                                           |
