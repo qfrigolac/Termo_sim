@@ -7,7 +7,7 @@ import numpy as np
 
 #GlowScript 3.0 VPython
 
-# Hard-sphere gas.
+# Gas de voles dures
 
 # Bruce Sherwood. Modificat per Pau Sànchez i Joaquim Frigola
 
@@ -15,16 +15,16 @@ win = 500
 
 
 ###### VARIABLES GENERALS I INICIALS ######
-Natoms = 400  # change this to have more or fewer atoms
+Natoms = 400  # Nombre d'àtoms de la simulació
 
 
-L = 1 # container is a cube L on a side
+L = 1 # Costat del cub contenidor
 
-gray = color.gray(0.7) # color of edges of container
-mass = 4E-3/6E23 # helium mass
-Ratom = 0.05 # wildly exaggerated size of helium atom
+gray = color.gray(0.7) # Color dels extrems del cub
+mass = 4E-3/6E23 # Massa de l'heli
+Ratom = 0.05 # Mida triada a partir de la q1
 k = 1.4E-23 # Boltzmann constant
-T0 = 300 # around room temperature
+T0 = 300 # Temperatura inicial
 dt = 1E-5
 
 nderiv=50 #Iter que farà en cada cas (per assolir l'eq) al càlcul de les deriv.
@@ -38,7 +38,7 @@ dq4 = 1
 animation = canvas( width=win, height=win, align='left') #Creació del canvas
 animation.range = L
 animation.title = 'Gas de "boles dures"'
-s = """  Distribució teòrica i pràctica de les velocitats (m/sec).
+s = """  Distribució teòrica i pràctica de les velocitats (m/s).
   Al inici apliquem la distribució de Maxwell-Boltzmann perquè
   les partícules es trobin en equilibri tèrmic.
   Codi de Bruce Sherwood. Modificat per Joaquim Frigola i Pau Sànchez.
@@ -77,7 +77,7 @@ def seta(s):
 Lx = L/2  #L'usarem per allargar la caixa més endavant
 
 
-Atoms = []  #Llista d'àtoms
+Atoms = []  #Llista d'àtoms (per la visualització)
 p = []  #Moment dels àtoms
 apos = []  #Posició dels àtoms
 histo = []   #Particions de l'histograma
@@ -90,7 +90,8 @@ nhisto = int(4500/deltav)
 nhisto2 = int(2*45000*deltaa)
 
 t=0  #Per controlar el temps que ha passat (gràfics)
-n=0  #Nombre de passos (t=n*dt) que serà més útil per fer mitj que la var ant.
+n=0  #Nombre de passos (t=n*dt), més útil per contr. que la variable t
+n2 = 0 # per a fer la mitjana global de la p i poder-ho resetejar
 
 m_glob_press=0 #Mitjana de la pressió des de t=0 fins a t
 mpress=0
@@ -151,7 +152,7 @@ def inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom):
         px = sqrt(mass*k*T)*sqrt(-2*log(u1))*cos(2*np.pi*u2)
         py = sqrt(mass*k*T)*sqrt(-2*log(u3))*cos(2*np.pi*u4)
         pz = sqrt(mass*k*T)*sqrt(-2*log(u5))*cos(2*np.pi*u6)
-        if i == 0:
+        if i == 0: #Fem les boles
             Atoms.append(sphere(pos=vector(x,y,z), radius=Ratom, 
                                 color=color.cyan))
         else: Atoms.append(sphere(pos=vector(x,y,z), radius=Ratom, color=gray))
@@ -159,7 +160,7 @@ def inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom):
         p.append(vector(px,py,pz)) #Guardem el moment
     
     for i in range(nhisto): histo.append(0.0)
-    for i in range(Natoms): histo[barx(p[i].mag/mass)]+=1
+    for i in range(Natoms): histo[barx(p[i].mag/mass)]+=1 #Desactivar si T alt
 
 def resetvars(animation,Atoms,p,apos,histo,vdist,press_graf,
               mpress_graf,m_glob_press_graf,temp_graf,tempx_graf):#Netejar tot
@@ -238,7 +239,7 @@ inicialitzacio(Atoms,p,apos,histo,nhisto,Ratom)
 
 
 gg = graph( width=win, height=0.4*win, xmax=3000, align='left',
-    xtitle='speed, m/s', ytitle='Number of atoms', ymax=Natoms*deltav/1000)
+    xtitle='v (m/s)', ytitle='Núm. àtoms', ymax=Natoms*deltav/1000)
 
 theory = gcurve( color=color.cyan )
 dv = 10
@@ -300,23 +301,23 @@ def checkCollisions():
 
 ###### PROGRAMA ######
 
-n = 0 # number of iterations
-n2 = 0 # per a fer la mitjana global de la p i poder-ho resetejar
+
+
 while True:
     rate(300)
     t += dt
     
-    # Accumulate and average histogram snapshots
+    # Histograma de velocitats
     for i in range(len(accum)): accum[i][1] = (n*accum[i][1] + histo[i])/(n+1)
     if n % 10 == 0:
         vdist.data = accum
 
 
-    # Update all positions
+    # Actualitzar posicions
     for i in range(Natoms): Atoms[i].pos = apos[i] = apos[i] + (p[i]/mass)*dt
 
 
-    
+    #Aquesta  part del codi no s'ha modificat:
     # Check for collisions
     hitlist = checkCollisions()
 
@@ -333,16 +334,17 @@ while True:
         a = vrel.mag2
         if a == 0: continue;  # exactly same velocities
         rrel = posi-posj
-        if rrel.mag > Ratom: continue # one atom went all the way through another
+        if rrel.mag > Ratom: continue # 1 atom went all the way through another
     
         # theta is the angle between vrel and rrel:
         dx = dot(rrel, vrel.hat)       # rrel.mag*cos(theta)
         dy = cross(rrel, vrel.hat).mag # rrel.mag*sin(theta)
-        # alpha is the angle of the triangle composed of rrel, path of atom j, and a line
-        #   from the center of atom i to the center of atom j where atome j hits atom i:
+        #alpha is the angle of the triangle composed of rrel, path of 
+        #atom j, and a line arom the center of atom i to the center of atom 
+        #j where atome j hits atom i:
         alpha = asin(dy/(2*Ratom)) 
-        d = (2*Ratom)*cos(alpha)-dx # distance traveled into the atom from first contact
-        deltat = d/vrel.mag         # time spent moving from first contact to position inside atom
+        d = (2*Ratom)*cos(alpha)-dx # dist trave into the atom from 1st contact
+        deltat = d/vrel.mag # t. spent mov from 1st contact to posi inside atom
         
         posi = posi-vi*deltat # back up to contact configuration
         posj = posj-vj*deltat
@@ -358,7 +360,7 @@ while True:
         apos[j] = posj+(p[j]/mass)*deltat
         interchange(vi.mag, p[i].mag/mass)
         interchange(vj.mag, p[j].mag/mass)
-        
+       
     mom_tan=0
     for i in range(Natoms):
         loc = apos[i]
@@ -377,7 +379,7 @@ while True:
             if loc.z < 0: p[i].z =  abs(p[i].z)
             else: p[i].z =  -abs(p[i].z)
             
-    # Càlcul de la pressió
+    # Càlcul de la pressió:
     press=2/(6*L*L*dt)*mom_tan 
     #Noteu que al treballar amb moments estalviem posar la massa a tot arreu 
     
@@ -392,7 +394,7 @@ while True:
     press_graf.plot((t,press)) #Gràfics
     m_glob_press_graf.plot((t,m_glob_press))
     
-    #Mesura de la temperatura
+    #Mesura de la temperatura:
     mtemp=0
     mtempx=0
     for i in range(Natoms): 
@@ -450,7 +452,7 @@ while True:
         inv_v_exp.append(1/(L*L*2*Lx))
         p_exp.append(m_glob_press)
         inst = False
-    if reset_press: #Reset
+    if reset_press: #Reset pressió global
         m_glob_press=press
         n2=0
         reset_press = False
@@ -495,7 +497,7 @@ while True:
                 flag+=1
             else: 
                 #Fem les regressions i mitjanes
-                div1=np.polyfit(temp_vol,press_vol,1)[0] #Numerador del coef,
+                div1=np.polyfit(temp_vol,press_vol,1)[0] #Numerador del coef
                 volum=[]
                 suma=0
                 for i in range(0,5): suma+=vol_temp[i]
@@ -528,12 +530,10 @@ while True:
                 coef_dil.append(alp)
                 
                 if alp>0 and alp < 0.02225: histo2[bara(alp)][1]+=1
-                #Pq l'if anterior? Si nderiv és massa petita llavors dona
+                #Pq l'if anterior? Si nderiv és massa petita llavors dóna
                 #valors molt distànts que no caben a l'histo (i si intentes 
                 #plotejar-los el programa peta). Per T altes cal fer el mateix
                 #amb l'histograma de velocitats (o desactivar-lo)
                 
                 vdist2.data = histo2
                 reset = True
-        
-    
